@@ -6,7 +6,7 @@ from slack_sdk import WebClient
 from starlette.background import BackgroundTasks
 from starlette.responses import Response
 
-from app.config.constants import openai_token, url, slack_token, channel
+from app.config.constants import openai_token, chat_server_url, slack_token, channel
 
 router = APIRouter()
 
@@ -27,7 +27,7 @@ def write_notification(message: dict):
     data = {"role": "user", "content": content}
 
     # Send messages to the ChatGPT server and respond to Slack
-    response = requests.post(url, headers=headers, json=data, params=params)
+    response = requests.post(chat_server_url, headers=headers, json=data, params=params)
     response.encoding = "utf-8"
     logging.info(response.text)
     client = WebClient(token=slack_token)
