@@ -6,7 +6,7 @@ from slack_sdk import WebClient
 from starlette.background import BackgroundTasks
 from starlette.responses import Response
 
-from app.config.constants import openai_token, chat_server_url, slack_token, channel
+from app.config.constants import openai_token, chat_server_url, slack_token, channel, number_of_messages_to_keep
 
 router = APIRouter()
 
@@ -22,7 +22,11 @@ def write_notification(message: dict):
 
     # Set the data to send
     event = message.get("event")
-    params = {"model": "gpt-3.5-turbo", "user_id": event.get("user")}
+    params = {
+        "model": "gpt-3.5-turbo",
+        "user_id": event.get("user"),
+        "number_of_messages_to_keep": number_of_messages_to_keep,
+    }
     content = "".join(event.get("text").split("> ")[1:])
     data = {"role": "user", "content": content}
 
