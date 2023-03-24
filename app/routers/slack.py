@@ -7,14 +7,12 @@ from starlette.background import BackgroundTasks
 from starlette.responses import Response
 
 from app.config.constants import openai_token, chat_server_url, slack_token, number_of_messages_to_keep
-from app.google.vision import text_detection
+from app.google.vision import text_detection, localize_objects
 
 router = APIRouter()
 
 
 def write_notification(message: dict):
-    logging.info(f"message: {message}")
-
     headers = {
         "accept": "application/json",
         "Content-Type": "application/json",
@@ -27,14 +25,19 @@ def write_notification(message: dict):
     thread_ts = event.get("thread_ts") if event.get("thread_ts") else event.get("ts")
 
     # Image processing
-    texts_in_images = []
+    texts_in_images, object_in_image = [], []
     system_message = ""
     if files := event.get("files"):
         texts_in_image = text_detection(files)
+        object_in_image = localize_objects(files)
         system_message = "\n".join(
-            [f"{index} 번째 사진에는 다음과 같은 글자가 있어. {texts}." for index, texts in enumerate(texts_in_image, 1)]
+            [
+                f"{index} 번째 사진에는 다음과 같은 글자와 객체가 있어. {text}, {object_}."
+                for index, (text, object_) in enumerate(zip(texts_in_image, object_in_image), 1)
+            ]
         )
         system_message += "이제 이 사진에 대해서 질문 할 거야. "
+
     params = {
         "model": "gpt-3.5-turbo",
         "context_unit": thread_ts,
@@ -42,6 +45,8 @@ def write_notification(message: dict):
     }
     content = "".join(event.get("text").split("> ")[1:])
     data = {"role": "user", "content": system_message + content}
+
+    logging.info(f"message: {data}")
 
     # Send messages to the ChatGPT server and respond to Slack
     response = requests.post(chat_server_url, headers=headers, json=data, params=params)
